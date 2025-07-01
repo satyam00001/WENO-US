@@ -6,7 +6,7 @@ N    = 64;
 L    = 2*pi;    
 dx = L/N;
 dt   = 0.001;   
-Tfinal = 0.1;
+Tfinal = 0.2;
 gamma = 1.4;
 out_interval = 100;  % timesteps per VTK output
 pad = 3;  % for WENO5
@@ -30,74 +30,7 @@ while t < Tfinal
     rho = U(:,:,:,1); u = U(:,:,:,2)./rho;
     v = U(:,:,:,3)./rho; w = U(:,:,:,4)./rho;
     KE = 0.5*mean(rho(:).*(u(:).^2+v(:).^2+w(:).^2));
- if mod(step, out_interval) == 0
-    write_vtk(['tgv3d_',num2str(step)], x, y, z, u, v, w, rho);
-
-    % Extract density at the central z-slice
-    slice_idx = round(N / 2);
-    rho_slice = rho(:, :, slice_idx);
-    x_slice = x(:, :, slice_idx);
-    y_slice = y(:, :, slice_idx);
-
-    % Single fixed figure for density
-    figure(1); clf;
-    contourf(x_slice, y_slice, rho_slice, 30); colorbar;
-    axis equal tight;
-    xlabel('x'); ylabel('y');
-    title(['Density Contour at z = \pi, Step ', num2str(step)]);
-    drawnow;
-end
-
-  
- %if mod(step, out_interval) == 0
-  %  write_vtk(['tgv3d_',num2str(step)], x,y,z, u,v,w,rho);
-    % Extract velocity components at z = pi plane (middle slice)
-    %slice_idx = round(N / 2);
-    %u_slice = u(:,:,slice_idx);
-    %v_slice = v(:,:,slice_idx);
-    %x_slice = x(:,:,slice_idx);
-    %y_slice = y(:,:,slice_idx);
-
-    % Plot vector field
-    %figure;
-    %quiver(x_slice, y_slice, u_slice, v_slice, 1.5);
-    %axis equal tight;
-    %xlabel('x'); ylabel('y');
-    %title('2D Vector Plot of Taylor-Green Vortex at z = \pi');
-    %end 
-
-%% for print numerical results that is relative error     
-%u_coarse = rand(64, 64, 64);% Replace with real result
-%u_coarse = rand(32, 32, 32);
-%u_fine   = rand(128, 128, 128); % Replace with real result
-%u_fine   = rand(64, 64, 64);
-% Downsample u_fine to match coarse grid (basic block averaging)
-%u_fine_down = u_fine(1:2:end, 1:2:end, 1:2:end);  % [64 x 64 x 64]
-% Compute relative L2 norm error
-%diff = u_fine_down - u_coarse;
-%L2_err = sqrt(sum(diff(:).^2) / sum(u_coarse(:).^2));fprintf('L2 relative error norm = %.6e\n', L2_err);
-
-   %% MATLAB 3D visualization (optional)
-   % figure(1); clf;
-   % %vel_mag = sqrt(u.^2 + v.^2 + w.^2);
-   % vel_mag = real(sqrt(u.^2 + v.^2 + w.^2));
-   % slice_idx = round(N/2);
-   % %slice_vals = squeeze(vel_mag(:,:,slice_idx));
-   % slice_vals = real(squeeze(vel_mag(:,:,slice_idx)));
-   % imagesc(x(:,1,1), y(1,:,1), slice_vals');
-   % axis equal tight; colorbar;
-   % title(['Velocity Magnitude Slice at z = \pi, Step ', num2str(step)]);
-   % xlabel('x'); ylabel('y'); drawnow;
-
-%% 3D iso-surface of density
-%figure(2); clf;
-%val = mean(rho(:));
-%p = patch(isosurface(x,y,z,rho,val));
-%isonormals(x,y,z,rho,p);
-%set(p, 'FaceColor', 'red', 'EdgeColor', 'none');
-%daspect([1 1 1]); view(3); camlight; lighting gouraud;
-%title(['Isosurface of density at step ', num2str(step)]);
-end
+ end 
 
 %% third-order strong-stability-preserving Runge–Kutta method (SSP-RK3)
 function Unew = RK3_step(U, dt, dx, gamma)
@@ -190,15 +123,15 @@ function dFdx = WENO5(F_ext, dx, upwind)
             f1 = F_ext(idx+1); f0 = F_ext(idx+2);
         end
 
-        %% Smoothness indicators WENO-JS,Z,ZC,ZC+, SZ,SZ+
+        %% Smoothness indicators WENO-JS, Z, ZC, ZC+, SZ, SZ+
         %beta0 = (13/12)*(f0 - 2*f1 + f2)^2 + 0.25*(f0 - 4*f1 + 3*f2)^2;
         %beta1 = (13/12)*(f1 - 2*f2 + f3)^2 + 0.25*(f1 - f3)^2;
         %beta2 = (13/12)*(f2 - 2*f3 + f4)^2 + 0.25*(f4 - 4*f3 + 3*f2)^2;
-        %% Smoothness indicator for WENO-LOC, UD ,US 
+        %% Smoothness indicator for WENO-LOC, UD , US 
         beta0 = 1/2*( (f1 - f0) ^2 + (f2-f1) ^2) + (f0 - 2*f1 + f2)^2;
         beta1 = 1/2*( (f2 - f1) ^2 + (f3-f2) ^2) + (f1 - 2*f2 + f3)^2;
         beta2 = 1/2*( (f3 - f2) ^2 + (f4-f3) ^2) + (f2 - 2*f3 + f4)^2;
-         %% WENO- LOC and WENO-JS scheme 
+        %% WENO-LOC and WENO-JS scheme 
         %alpha0 = 0.1 / (epsilon + beta0)^2;
         %alpha1 = 0.6 / (epsilon + beta1)^2;
         %alpha2 = 0.3 / (epsilon + beta2)^2;
