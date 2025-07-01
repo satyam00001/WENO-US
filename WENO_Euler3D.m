@@ -66,16 +66,6 @@ end
     %title('2D Vector Plot of Taylor-Green Vortex at z = \pi');
     %end 
 
-%% for print numerical results that is relative error     
-%u_coarse = rand(64, 64, 64);% Replace with real result
-%u_coarse = rand(32, 32, 32);
-%u_fine   = rand(128, 128, 128); % Replace with real result
-%u_fine   = rand(64, 64, 64);
-% Downsample u_fine to match coarse grid (basic block averaging)
-%u_fine_down = u_fine(1:2:end, 1:2:end, 1:2:end);  % [64 x 64 x 64]
-% Compute relative L2 norm error
-%diff = u_fine_down - u_coarse;
-%L2_err = sqrt(sum(diff(:).^2) / sum(u_coarse(:).^2));fprintf('L2 relative error norm = %.6e\n', L2_err);
 
    %% MATLAB 3D visualization (optional)
    % figure(1); clf;
@@ -190,7 +180,7 @@ function dFdx = WENO5(F_ext, dx, upwind)
             f1 = F_ext(idx+1); f0 = F_ext(idx+2);
         end
 
-        %% Smoothness indicators WENO-JS,Z,ZC,ZC+, SZ,SZ+
+        %% Smoothness indicators WENO-JS,Z,
         %beta0 = (13/12)*(f0 - 2*f1 + f2)^2 + 0.25*(f0 - 4*f1 + 3*f2)^2;
         %beta1 = (13/12)*(f1 - 2*f2 + f3)^2 + 0.25*(f1 - f3)^2;
         %beta2 = (13/12)*(f2 - 2*f3 + f4)^2 + 0.25*(f4 - 4*f3 + 3*f2)^2;
@@ -221,27 +211,6 @@ function dFdx = WENO5(F_ext, dx, upwind)
         alpha0 = 0.1 *(1 + 0.1 * (tau / (epsilon + beta0))^2);
         alpha1 = 0.6*(1 + 0.1*(tau / (epsilon + beta1))^2);
         alpha2 = 0.3*(1 + 0.8*(tau / (epsilon + beta2))^2);
-        %% WENO-ZC and WENO-ZC+ scheme 
-        %tau = abs(beta2 - beta0);
-        %beta3= (beta0+beta1+beta2)/3;
-        %alpha0 = 0.1 *(1 + 1.125 *((tau)/ (beta0 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2);
-        %alpha1 = 0.6 *(1 + 2.25*((tau)/ (beta1 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2);
-        %alpha2 = 0.3 *(1 + 1.125*((tau)/ (beta2 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2);
-        %alpha0 = 0.1 *(1 + 1.125 *((tau)/ (beta0 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2 + ((beta0)/(tau +beta3+epsilon)));
-        %alpha1 = 0.6 *(1 + 2.25*((tau)/ (beta1 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2 + ((beta1) /(tau +beta3+epsilon)));
-        %alpha2 = 0.3 *(1 + 1.125*((tau)/ (beta2 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2+ ((beta2)/(tau +beta3+epsilon)));
-        %% WENO-SZ and WENO-SZ+ scheme
-        %tau = ((abs(beta0-beta2)+abs(beta1-beta2)+abs(beta1-beta0))/3);
-        %beta3= (beta0+beta1+beta2)/3;
-       % alpha0 = 0.1 *(1 + 0.75 *((tau)/ (beta0 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2);
-       % alpha1 = 0.6 *(1 + 1.5*((tau)/ (beta1 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2);
-       % alpha2 = 0.3 *(1 + 0.75*((tau)/ (beta2 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2);
-        %alpha0 = 0.1 *(1 + 0.75 *((tau)/ (beta0 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2 + ((beta0)/(tau +beta3+epsilon)));
-        %alpha1 = 0.6 *(1 + 1.5*((tau)/ (beta1 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2 + ((beta1) /(tau +beta3+epsilon)));
-        %alpha2 = 0.3 *(1 + 0.75*((tau)/ (beta2 + epsilon))^2  * (tau/ (tau + beta3 + epsilon))^2+ ((beta2)/(tau +beta3+epsilon)));
-       
-        
-        
         w0 = alpha0 / (alpha0 + alpha1 + alpha2);
         w1 = alpha1 / (alpha0 + alpha1 + alpha2);
         w2 = alpha2 / (alpha0 + alpha1 + alpha2);
