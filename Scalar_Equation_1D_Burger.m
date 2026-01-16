@@ -178,64 +178,13 @@ function f_half = WENO_Reconstruction(f)
          %alpha = d./(beta + epsilon).^p;
         %WENO-Z weights : alpha_k
         %tau = abs(beta(3) - beta(1));
-        %tau = (W(1)-W(3));
-        %E =cfl*dx^(5/3);
-        %E = [-1,1/2,1/2] ;
-        %B = [1/3,1/3,1/3] ;
-        %E = [1/4,1/4,1/2] ;
-        %E = [7/4 ,14/11 ,4];
-        %E = [9/8,9/4,9/8] ;
-        %B = [1/9,1/9,7/9] ;
         %E = [1/10,1/10,4/5];
         %E = [3/4,3/2,3/4] ;
         %D = 20;
         %tau = abs(-2*([1 -2 1] * f(i-1:i+1)).^2 +  ([1 -2 1] * f(i-2:i)).^2 +([1 -2 1] * f(i:i+2)).^2);
-        %tau = abs(-2*([-1 0 1] * f(i-1:i+1)).^2 +  ([1 -4 3] * f(i-2:i)).^2 +([3 -4 1] * f(i:i+2)).^2)/4;
-        %tau = abs((b(5)+b(6)+b(7))/3-B(5));
-        %tau = (abs(IS(1)-IS(3)) + abs(IS(1)-IS(2)) + abs(IS(2)-IS(3)))/3;
-        %tau = (abs(beta(1)-beta(3)) + abs(beta(1)-beta(2)) + abs(beta(2)-beta(3)))/3;
-       % tau= (abs(beta(3)-beta(2)) + abs(beta(2)-beta(1)) -2* abs(beta(3)-beta(1)));
-        %tau = (abs(S(1)-S(3))+abs(S(2)-S(3)) -2*abs(S(2)-S(1)));
-        %tau = abs((b(6)+b(7))/2  -B(5));
-       % tau = abs(S(1)-2*S(2)+S(3));
-        %tau = ((abs(beta(1)-beta(3))+abs(beta(2)-beta(3))+abs(beta(2)-beta(1)))/3);
-        %tau = ((abs(S(1)-S(3))+abs(S(2)-S(3))+abs(S(2)-S(1)))/6);
-        %epsilon1 = 10^(-16);
-        %epsilon1 = dx.^2;
-        %beta3= (beta(1)+beta(2)+beta(3))/3;
-        %alpha = d .*(1 + ((tau +epsilon1)./ (beta + epsilon)).^p + 0.03*((beta + epsilon)./(tau +epsilon1)));
-        %alpha = d .*(1 + E.*((tau)./ (beta + epsilon)).^p  * (tau./ (tau + beta3 + epsilon)).^2);
-        %alpha = d .*(1 + E.*((tau)./ (beta + epsilon)).^p  * (tau./ (tau + beta3 + epsilon)).^2 + ((beta)./(tau +beta3+epsilon)));
-        %B= [9/8,9/4,9/8];
-        %tau = abs(S(1)-2*S(2)+S(3));
-        %tau = abs(1/4*(3*(S(1)+S(2)) -2*S(3)) -(S(1)*S(2)).^(1/2));
-        %tau = (abs(b(5)-b(6)) +3*abs(b(6)-b(7)) +2*abs(b(5)-b(7)))/6;
-        %tau = (abs(B(5)-b(6))+abs(B(5)-b(7)) +abs(B(5)-b(5)))/6;
+        tau= (abs(b(6)-B(5)) + abs(b(7)-B(5)) -2* abs(b(5)-B(5)));
         %alpha = d.*( 1 + E.*(tau./( beta + epsilon) ).^p );
         %alpha = d.*( 1 +( tau./( beta + epsilon) ).^p );
-        %alpha = d .* (1 + E.*((tau ./ (beta + epsilon)).^2) * (tau./ (tau + beta3 + epsilon)).^2 + beta./(tau+ beta3+epsilon));
-        %alpha = d .* (1 + E.*((tau ./ (beta + epsilon)).^2) * (tau./ (tau + beta3 + epsilon)).^2);
-        % Nonlinear weights : omega_k
-         % --- nonlinear blending factors (as you wrote them) ---
-        %q = 10;
-        %A(1) = 1 - ((abs(beta(1) - beta(3)) ./ ((beta(1) + beta(3) + epsilon))).^q);
-        %A(2)= 1 - ((abs(beta(1) - beta(3)) ./ ((beta(1) + beta(3) + epsilon))).^q);
-        %A(3) = 1 - ((abs(beta(1) - beta(3)) ./ ((beta(1) + beta(3) + epsilon))).^q);
-    
-        % --- lower-order polynomial reconstructions (use matrix mult: row * column) ---
-        % Note: f is a column vector, so coeff_row * f(slice) gives scalar
-         %P(1) = ([ 3 -10 15]/8)  * f(i-2:i) + ...
-         %     A(1) * ([-1 2 0 -2 1]/8) * f(i-2:i+2);
-
-        %P(2) = ([-1 6 3]/8)   * f(i-1:i+1) + ...
-         %      A(2) * ([1 -2 0 2 -1]/24) * f(i-2:i+2);
-
-        %P(3) = ([3 6 -1]/8)   * f(i:i+2) + ...
-         %      A(3) * ([-1 2 0 -2 1]/24) * f(i-2:i+2);
-        tau = abs(beta(3) - beta(1));
-        Qi_local = mean(f(i-2:i+2));
-        mu = (1/5)*sum(abs(f(i-2:i+2) - Qi_local)) + 1e-40;
-        alpha = d .* (1 + (tau ./ (beta + epsilon * mu^2)).^2);
         omega = alpha/sum(alpha);
        % Reconstructed polynomial f_half at the cell boundary x_(i+1/2)
         f_half(i+1) = omega*P;
@@ -255,3 +204,4 @@ end
         drawnow;
     end
 end
+
