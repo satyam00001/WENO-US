@@ -3,8 +3,8 @@ global gamma
 %% Parameters
 CFL = 0.45; % CFL number
 tEnd = 0.2; % Final time
-nx = 401; % Number of cells/Elements in x
-ny = 401; % Number of cells/Elements in y
+nx = 201; % Number of cells/Elements in x
+ny = 201; % Number of cells/Elements in y
 n = 5; % Degrees of freedom: ideal air=5, monoatomic gas=3.
 IC =5; % IC cases are available
 fspltMth='LF'; % LF, LLF.
