@@ -81,28 +81,7 @@ function Scalar_Equation_1D_Burger
     function f_BC = BoundaryCondition(f)
         f_BC = [f(end-2:end), f, f(1:3)]; % Periodical BC
     end
-    % Approximate 2nd derivative (central finite difference)
-function Fxx = second_derivative(F, ~)
-    Nf = numel(F);
-    Fxx = zeros(size(F));
-    % The stencil uses up to i+4, so valid i are 3 .. Nf-4
-    for i = 3 : Nf-4
-        % use F (not f) and safe indexing
-        Fxx(i) = (1/48) * ( -5*F(i-2) + 39*F(i-1) - 34*F(i) ...
-                           - 34*F(i+1) + 39*F(i+2) - 5*F(i+3) );
-    end
-end
 
-% Approximate 4th derivative (central finite difference)
-function F4 = fourth_derivative(F, ~)
-    Nf = numel(F);
-    F4 = zeros(size(F));
-    % The stencil uses up to i+4, so valid i are 3 .. Nf-4
-    for i = 3 : Nf-4
-        F4(i) = 0.5 * ( F(i-2) - 3*F(i-1) + 2*F(i) ...
-                       + 2*F(i+1) - 3*F(i+2) + F(i+3) );
-    end
-end
     %------------------------WENO Differentiation--------------------
     function D_F = Diff(F, Q)
         r = (Order + 1) / 2; NN = length(F); D_F = zeros(1, NN - 2 * r);
@@ -204,4 +183,5 @@ end
         drawnow;
     end
 end
+
 
