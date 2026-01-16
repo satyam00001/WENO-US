@@ -144,12 +144,6 @@ function f_half = WENO_Reconstruction(f)
         beta(1) = c1*([ 1 -4 3] * f(i-2:i )).^2 + c2*([1 -2 1] * f(i-2:i )).^2;
         beta(2) = c1*([-1 0 1] * f(i-1:i+1)).^2 + c2*([1 -2 1] * f(i-1:i+1)).^2;
         beta(3) = c1*([-3 4 -1] * f( i:i+2)).^2 + c2*([1 -2 1] * f( i:i+2)).^2;
-        %beta(1) = 1/2*(([ -1 1 0] * f(i-2:i )).^2 + ([0 -1 1] * f(i-2:i )).^2) + ([1 -2 1] * f(i-2:i)).^2;
-        %beta(2) = 1/2*(([ -1 1 0] * f(i-1:i+1 )).^2 + ([0 -1 1] * f(i-1:i+1)).^2) + ([1 -2 1] * f(i-1:i+1)).^2;
-        %beta(3) = 1/2*(([ -1 1 0] * f(i:i+2 )).^2 + ([0 -1 1] * f(i:i+2 )).^2) + ([1 -2 1] * f(i:i+2)).^2;
-        S(1) = s1*([ 1 -4 3] * f(i-2:i )).^2 + s2*([1 -2 1] * f(i-2:i )).^2;
-        S(2) = s1*([-1 0 1] * f(i-1:i+1)).^2 + s2*([1 -2 1] * f(i-1:i+1)).^2;
-        S(3) = s1*([-3 4 -1] * f( i:i+2)).^2 + s2*([1 -2 1] * f( i:i+2)).^2;
         b(1) = ([ 1 -1  0] * f(i-2:i )).^2 ;
         b(2) = ([1 -1 0] * f(i-1:i+1)).^2 ;
         b(3) = ([1 -1 0] * f( i:i+2)).^2 ;    
@@ -166,41 +160,9 @@ function f_half = WENO_Reconstruction(f)
         alpha = d./(beta + epsilon).^p;
         %WENO-Z weights : alpha_k
         %tau = abs(beta(3) - beta(1));
-        %tau = (W(1)-W(3));
-        %E =cfl*dx^(5/3);
-        %E = [-1,1/2,1/2] ;
-        %B = [1/3,1/3,1/3] ;
-        %E = [1/4,1/4,1/2] ;
-        %E = [7/4 ,14/11 ,4];
-        %E = [9/8,9/4,9/8] ;
-        %E = [1/9,1/9,7/9] ;
-        E = [1/10,1/10,4/5];
-        %E = [3/4,3/2,3/4] ;
-        %D = 20;
-        %tau = abs(-2*([1 -2 1] * f(i-1:i+1)).^2 +  ([1 -2 1] * f(i-2:i)).^2 +([1 -2 1] * f(i:i+2)).^2);
-        %tau = abs(-2*([-1 0 1] * f(i-1:i+1)).^2 +  ([1 -4 3] * f(i-2:i)).^2 +([3 -4 1] * f(i:i+2)).^2)/4;
-        %tau = abs((b(5)+b(6)+b(7))/3-B(5));
-        %tau = (abs(IS(1)-IS(3)) + abs(IS(1)-IS(2)) + abs(IS(2)-IS(3)))/3;
-        %tau = (abs(beta(1)-beta(3)) + abs(beta(1)-beta(2)) + abs(beta(2)-beta(3)))/3;
-        %tau= (abs(beta(3)-beta(2)) + abs(beta(2)-beta(1)) -2* abs(beta(3)-beta(1)));
-        %tau = (abs(S(1)-S(3))+abs(S(2)-S(3)) -2*abs(S(2)-S(1)));
-        %tau = abs((b(6)+b(7))/2  -B(5));
-        %tau = abs(S(1)-2*S(2)+S(3));
-        %tau = ((abs(beta(1)-beta(3))+abs(beta(2)-beta(3))+abs(beta(2)-beta(1)))/3);
-        %tau = ((abs(S(1)-S(3))+abs(S(2)-S(3))+abs(S(2)-S(1)))/6);
-        %epsilon1 = 10^(-16);
-        %B =cfl* dx^(1/6) ;
-        %beta3= (beta(1)+beta(2)+beta(3))/3;
-        %alpha = d .*(1 + ((tau)./ (beta + epsilon)).^p + E*((beta+epsilon)./(tau +epsilon)));
-        %alpha = d .*(1 + E.*((tau)./ (beta + epsilon)).^p  * (tau./ (tau + beta3 + epsilon)).^2);
-        %alpha = d .*(1 + E.*((tau)./ (beta + epsilon)).^p  * (tau./ (tau + beta3 + epsilon)).^2 + ((beta)./(tau +beta3+epsilon)));
-        %B= [9/8,9/4,9/8];
-        %tau = abs(S(1)-2*S(2)+S(3));
-        %tau = abs(1/4*(3*(S(1)+S(2)) -2*S(3)) -(S(1)*S(2)).^(1/2));
-        %tau = (abs(b(5)-b(6)) +3*abs(b(6)-b(7)) +2*abs(b(5)-b(7)))/6;
-        %tau = (abs(B(5)-b(6))+abs(B(5)-b(7)) +abs(B(5)-b(5)))/6;
-        %tau= (abs(b(6)-B(5)) + abs(b(7)-B(5)) -2* abs(b(5)-B(5)));
-        %alpha = d.*( 1 + E.*(tau./( beta + epsilon) ).^p );
+       
+        tau= (abs(b(6)-B(5)) + abs(b(7)-B(5)) -2* abs(b(5)-B(5)));
+        alpha = d.*( 1 + E.*(tau./( beta + epsilon) ).^p );
         %alpha = d.*( 1 +( tau./( beta + epsilon) ).^p );
         % Nonlinear weights : omega_k
         omega = alpha/sum(alpha);
@@ -208,4 +170,5 @@ function f_half = WENO_Reconstruction(f)
         f_half(i+1) = omega*P;
     end
 end
+
 end
