@@ -2,7 +2,7 @@ clear; %close all; clc;
 global gamma 
 %% Parameters
 CFL = 0.45; % CFL number
-tEnd = 0.2; % Final time
+tEnd = 0.3; % Final time
 nx = 201; % Number of cells/Elements in x
 ny = 201; % Number of cells/Elements in y
 n = 5; % Degrees of freedom: ideal air=5, monoatomic gas=3.
@@ -394,12 +394,6 @@ beta = 1/3.*(B0n+B1n+B2n);
 %B2n = 1/2*((vp-vo).^2 + (vpp-vp).^2) + (vpp-2*vp+vo).^2;
 % Global smoothness measure (tau5)
 tau5 = abs(B0n - B2n);
-%tau5 = (abs(B0n -B2n)+ abs(B0n -B1n)+ abs(B2n -B1n))/3;
-% Modified Smooth Indicators
- %b1 = ([1 -1 0] * [vmm; vm; vo]).^2;
- %b2 = ([1 -1 0] * [vm; vo; vp]).^2;
- %b3 = ([1 -1 0] * [vo; vp; vpp]).^2;
- %b4 = ([0 1 -1] * [vo; vp; vpp]).^2;
  %b1 = (1/4) * ([1 -4 3] * [vmm; vm; vo]).^2;
  %b2 = (1/4) * ([-1 0 1] * [vm; vo; vp]).^2;
  %b3 = (1/4) * ([3 -4 1] * [vo; vp; vpp]).^2;
@@ -409,8 +403,6 @@ tau5 = abs(B0n - B2n);
  %b5 = (1/144) * ([1 -8 0 8 -1] * [vmm; vm; vo; vp; vpp]).^2;
  
  % Global Smoothness Measure (tau)
- %tau5 = abs((3*B5 + b5)/4 - (3*b2 + 6*b3 - b4)/8);
- %tau5 = abs(b1-3*b2+3*b3-b4)/6 ;
  %tau5 = (abs(b1-b5)+abs(b3-b5)-2*abs(b2-b5));
 % Linear weights
 d0n = 1/10; d1n = 6/10; d2n = 3/10; epsilon = 1e-40; p = 2;
@@ -447,11 +439,6 @@ eta = 1/3.*(B0p +B1p + B2p);
 %B0p = 1/2*((um-umm).^2 + (uo-um).^2) + (uo-2*um+umm).^2;
 %B1p = 1/2*((uo-um).^2 + (up-uo).^2) + (um-2*uo+up).^2;
 %B2p = 1/2*((up-uo).^2 + (upp-up).^2) + (upp-2*up+uo).^2;
-% Modified Smooth Indicators for Right
- % b1 = ([1 -1 0] * [umm; um; uo]).^2;
- % b2 = ([1 -1 0] * [um; uo; up]).^2;
- % b3 = ([1 -1 0] * [uo; up; upp]).^2;
- %b4 = ([0 1 -1] * [uo; up; upp]).^2;
 % b1 = (1/4) * ([1 -4 3] * [umm; um; uo]).^2;
 % b2 = (1/4) * ([-1 0 1] * [um; uo; up]).^2;
 % b3 = (1/4) * ([3 -4 1] * [uo; up; upp]).^2;
@@ -459,14 +446,8 @@ eta = 1/3.*(B0p +B1p + B2p);
  % Extended Smoothness Terms
  % B4 = (1/36) * ([0 2 3 -6 1] * [umm; um; uo; up; upp]).^2;
  %b5 = (1/144) * ([1 -8 0 8 -1] * [umm; um; uo; up; upp]).^2;
- 
- % Global Smoothness Measure (tau)
- %tau5 = abs(b(1)-3*b(2)+3*b(3)-b(4))/6 ;
- %tau5 = abs((3*B5 + b5)/4 - (3*b2 + 6*b3 - b4)/8);
- %tau5 = abs(b1-3*b2+3*b3-b4)/6 ;
 % Global smoothness measure (tau5)
 tau5 = abs(B0p - B2p);
-%tau5 = (abs(B0p -B2p)+ abs(B0p -B1p)+ abs(B2p -B1p))/3;
 % Linear weights
 d0p = 1/10; d1p = 6/10; d2p = 3/10; epsilon = 1e-40; p = 2;
 E0p = 3/4; E1p = 3/2; E2p = 3/4;
@@ -513,10 +494,6 @@ beta = 1/3 *(B0n+B1n+B2n);
 %B1n = 1/2*((vo-vm).^2 + (vp-vo).^2) + (vm-2*vo+vp).^2;
 %B2n = 1/2*((vp-vo).^2 + (vpp-vp).^2) + (vpp-2*vp+vo).^2;
 % Modified Smooth Indicators
- % b1 = ([1 -1 0] * [vmm; vm; vo]).^2;
- % b2 = ([1 -1 0] * [vm; vo; vp]).^2;
- % b3 = ([1 -1 0] * [vo; vp; vpp]).^2;
- % b4 = ([0 1 -1] * [vo; vp; vpp]).^2;
  %b1 = (1/4) * ([1 -4 3] * [vmm; vm; vo]).^2;
  %b2 = (1/4) * ([-1 0 1] * [vm; vo; vp]).^2;
  %b3 = (1/4) * ([3 -4 1] * [vo; vp; vpp]).^2;
@@ -524,11 +501,6 @@ beta = 1/3 *(B0n+B1n+B2n);
  % Extended Smoothness Terms
  % B4 = (1/36) * ([0 2 3 -6 1] * [vmm; vm; vo; vp; vpp]).^2;
  %b5 = (1/144) * ([1 -8 0 8 -1] * [vmm; vm; vo; vp; vpp]).^2;
- 
- % Global Smoothness Measure (tau)
- %tau5 = abs((3*B5 + b5)/4 - (3*b2 + 6*b3 - b4)/8);
- %tau5 = abs(b(1)-3*b(2)+3*b(3)-b(4))/6 ;
- %tau5 = abs(b1-3*b2+3*b3-b4)/6 ;
  % Linear weights and regularization
  % d = [1/10, 6/10, 3/10];
  % epsilon = 1e-40;
@@ -540,7 +512,6 @@ E0n = 3/4; E1n = 3/2; E2n = 3/4;
 %tau5 = (abs(b1-b5)+abs(b3-b5)-2*abs(b2-b5));
 % Alpha Weights for WENO-Z
 tau5 = abs(B0n - B2n); % Global smoothness indicator
-%tau5 = (abs(B0n -B2n)+ abs(B0n -B1n)+ abs(B2n -B1n))/3;
 alpha0n = d0n .* (1 + (tau5 ./ (epsilon + B0n)).^2);
 alpha1n = d1n .* (1 + (tau5 ./ (epsilon + B1n)).^2);
 alpha2n = d2n .* (1 + (tau5 ./ (epsilon + B2n)).^2);
@@ -571,17 +542,13 @@ eta = 1/3.*(B0p+B1p+B2p);
 %B1p = 1/2*((uo-um).^2 + (up-uo).^2) + (um-2*uo+up).^2;
 %B2p = 1/2*((up-uo).^2 + (upp-up).^2) + (upp-2*up+uo).^2;
 % Modified Smooth Indicators for Right
-%b1 = ([1 -1 0] * [umm; um; uo]).^2;
-%b2 = ([1 -1 0] * [um; uo; up]).^2;
-%b3 = ([1 -1 0] * [uo; up; upp]).^2;
-%b4 = ([0 1 -1] * [uo; up; upp]).^2;
  %b1 = (1/4) * ([1 -4 3] * [umm; um; uo]).^2;
  %b2 = (1/4) * ([-1 0 1] * [um; uo; up]).^2;
  %b3 = (1/4) * ([3 -4 1] * [uo; up; upp]).^2;
 % Extended Smoothness Terms
  % B4 = (1/36) * ([0 2 3 -6 1] * [umm; um; uo; up; upp]).^2;
  %b5 = (1/144) * ([1 -8 0 8 -1] * [umm; um; uo; up; upp]).^2;
- % Linear weights and regularization
+ % Linear weights and regularisation
  %d = [1/10, 6/10, 3/10];
  % epsilon = 1e-40;
  % Nonlinear alpha weights (WENO-Z)
@@ -594,7 +561,6 @@ E0p = 3/4; E1p = 3/2; E2p = 3/4;
 %tau5 = (abs(b1-b5)+abs(b3-b5)-2*abs(b2-b5));
 % Alpha Weights for WENO-Z
 tau5 = abs(B0p - B2p); % Global smoothness indicator
-%tau5 = (abs(B0p -B2p)+ abs(B0p -B1p)+ abs(B2p -B1p))/3;
 alpha0p = d0p .* (1 +(tau5 ./ (epsilon + B0p)).^2);
 alpha1p = d1p .* (1 +(tau5 ./ (epsilon + B1p)).^2);
 alpha2p = d2p .* (1 +(tau5 ./ (epsilon + B2p)).^2);
