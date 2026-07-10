@@ -261,12 +261,6 @@ B(5) = 1/144 * ([1 -8 0 8 -1]* f(r-2:r+2)).^2;
 if flag == 1
 % WENO-Z weights : alpha_k
 tau = abs(beta(3) - beta(1));
-%Qi_local = mean(Q(r-2:r+2));
-%mu = (1/5)*sum(abs(Q(r-2:r+2) - Qi_local)) + 1e-40;
-
-%alpha = d .* (1 + (tau ./ (beta + ep * mu^2)).^2);
-    
-%tau = abs(beta(3) - beta(1));
 %tau = abs(-2*([1 -2 1] * f(r-1:r+1)).^2 +  ([1 -2 1] * f(r-2:r)).^2 +([1 -2 1] * f(r:r+2)).^2);
 %tau= (abs(b(6)-B(5)) + abs(b(7)-B(5)) -2* abs(b(5)-B(5)));
 alpha = d .* (1 + (tau ./ (ep+beta)).^p);
@@ -317,14 +311,10 @@ B(5) = 1/144 * ([1 -8 0 8 -1]* f(r-2:r+2)).^2;
 %E = [1/10,1/10,4/5];
 if flag == 1
 tau = abs(beta(3) - beta(1));
-Qi_local = mean(Q(r-2:r+2));
-mu = (1/5)*sum(abs(Q(r-2:r+2) - Qi_local)) + 1e-40;
-
-alpha = d .* (1 + (tau ./ (beta + ep * mu^2)).^2);
 %tau = abs(beta(3) - beta(1));
 %tau = abs(-2*([1 -2 1] * f(r-1:r+1)).^2 +  ([1 -2 1] * f(r-2:r)).^2 +([1 -2 1] * f(r:r+2)).^2);
 %tau= (abs(b(6)-B(5)) + abs(b(7)-B(5)) -2* abs(b(5)-B(5)));
-%alpha = d .* (1 + (tau ./ (ep+beta)).^p);
+alpha = d .* (1 + (tau ./ (ep+beta)).^p);
 else
 alpha = d ./ (ep+beta).^p;
 end
