@@ -4,7 +4,7 @@ N = 201; % Number of Grid points/cells
 g = 9.812; % Specific heat ratio
 cfl = 0.45 ; % CFL number
 Order = 5 ; % WENO Order
-epsilon = 10^(-6) ; % WENO sensitivity parameter
+epsilon = 10^(-16) ; % WENO sensitivity parameter
 p = 2 ; % WENO power parameter
 %--------------- END INPUT-----------------------------------------------------
 r = (Order+1)/2;
@@ -37,20 +37,11 @@ end
 function [x, dx, Final_Time, Q0] = Initial_Condition (IC, N)
 switch IC % function for IC
 case 0
-[x, dx] = GetGrid(-5,5, N);
- Final_Time = 0.1;
-        h0 = 2.0 * ones(size(x)); h0(x >= 0) = 1.5;  % Water height
+[x, dx] = GetGrid(-1,1, N);
+ Final_Time = 0.05;
+        h0 = 2.0 * ones(size(x)); h0(x >= 0) = 1;  % Water height
         u0 = zeros(size(x));                        % Velocity
-    case 1
-    
-            [x, dx] = GetGrid(0, 20, N);
-            Final_Time = 0.5;
-            %u0 = zeros(size(x));
-            %h0 = (1 + (2/5) .* exp(-5 * x.^2)).*ones(size(x));
-            u0 = 0 * ones(size(x)); u0(x >= 10) = 1.5;  % Water height
-             h0 = 0.2 * ones(size(x)); u0(x >= 10) = 0.5;  
-    
-   case 2
+   case 1
     [x, dx] = GetGrid(-1, 1, N);
     Final_Time = 0.1;
     h0 = 0.1 * ones(size(x));                  % Water height
@@ -135,7 +126,7 @@ function f_half = WENO_Reconstruction(f)
     R = zeros(1,3);
     S = zeros(1,3);
     
-    for i = r:NN-r
+    for i = r: NN-r
    % lower order polynomial in substencil S^k, k=0,1,2 using cell center value f_i
             P(1) = [ 2 -7 11]/6 * f(i-2:i );
             P(2) = [-1 5 2]/6 * f(i-1:i+1);
@@ -154,17 +145,14 @@ function f_half = WENO_Reconstruction(f)
         B = zeros(1,5);
         B(4) = 1/36 * ([0 2 3 -6 1]* f(i-2:i+2)).^2;
         B(5) = 1/144 * ([1 -8 0 8 -1]* f(i-2:i+2)).^2;
-        %tau = abs((3*B(5)+b(5))/4 - (3*b(2)+6*b(3)-b(4))/8);
-        %tau = abs(b(1)-3*b(2)+3*b(3)-b(4))/6 ;
-        % WENO-JS weights : alpha_k
+        % WENO-JS weights: alpha_k
         alpha = d./(beta + epsilon).^p;
-        %WENO-Z weights : alpha_k
+        %WENO-Z weights: alpha_k
         %tau = abs(beta(3) - beta(1));
-       
         tau= (abs(b(6)-B(5)) + abs(b(7)-B(5)) -2* abs(b(5)-B(5)));
         alpha = d.*( 1 + E.*(tau./( beta + epsilon) ).^p );
         %alpha = d.*( 1 +( tau./( beta + epsilon) ).^p );
-        % Nonlinear weights : omega_k
+        % Nonlinear weights: omega_k
         omega = alpha/sum(alpha);
        % Reconstructed polynomial f_half at the cell boundary x_(i+1/2)
         f_half(i+1) = omega*P;
