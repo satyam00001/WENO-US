@@ -34,7 +34,7 @@ dt0 = CFL * dx;
 % Discretize time domain
 %vn = sqrt(u0.^2+v0.^2); lambda1=vn+c0; lambda2=vn-c0;
 %a0 = max(abs([lambda1(:);lambda2(:)]));
-dt0=CFL*min(dx./a0,dy./a0);
+%dt0=CFL*min(dx./a0,dy./a0);
 
 % Initialize parpool
 % poolobj = gcp('nocreate'); % If no pool, do not create new one.
@@ -47,7 +47,7 @@ dt0=CFL*min(dx./a0,dy./a0);
 %subplot(2,2,2); [~,h2]=contourf(x,y,u0); axis('square'); xlabel('x'); ylabel('y'); title('u_x');
 %subplot(2,2,3); [~,h3]=contourf(x,y,v0); axis('square'); xlabel('x'); ylabel('y'); title('u_y');
 %subplot(2,2,4); [~,h4]=contourf(x,y,p0); axis('square'); xlabel('x'); ylabel('y'); title('p');
-end
+%end
 
 % Select Solver
 solver = 1;
@@ -103,7 +103,7 @@ for run = 1:numRuns
     %set(h3,'ZData',v(in,jn));
     %set(h4,'ZData',p(in,jn));
     %drawnow
-end
+    %end
     totalCpuTime = totalCpuTime + toc;
 end
 
