@@ -1,15 +1,15 @@
 clear; %close all; clc;
 global gamma 
 %% Parameters
-CFL = 0.45; % CFL number
-tEnd = 0.3; % Final time
-nx = 201; % Number of cells/Elements in x
-ny = 201; % Number of cells/Elements in y
+CFL = 0.45; %CFL number
+tEnd = 0.3; %Final time
+nx = 201; %Number of cells/Elements in x
+ny = 201; %Number of cells/Elements in y
 n = 5; % Degrees of freedom: ideal air=5, monoatomic gas=3.
-IC =5; % IC cases are available
-fspltMth='LF'; % LF, LLF.
-reconMth='WENO5'; % WENO5, WENO7, Poly5, Poly7;
-plotFig = false; % Visualize evolution of domain
+IC = 1; % 2 IC cases are available
+fspltMth='LF'; %LF, LLF.
+reconMth='WENO5'; %WENO5, WENO7, Poly5, Poly7;
+plotFig = false; %Visualize evolution of domain
 % Ratio of specific heats for ideal di-atomic gas
 gamma=(n+2)/n;
 % Discretize spatial domain
@@ -27,63 +27,90 @@ switch reconMth
 	case {'WENO7','Poly7'}, R=4; nx=nx+2*R; ny=ny+2*R; in=R+1:ny-R; jn=R+1:nx-R;
 end 
 q0=zeros(ny,nx,4); q0(in,jn,:)=Q0;
+
+% ENFORCED TIMESCALE RELATION: t = CFL * dx
+dt0 = CFL * dx; 
+
 % Discretize time domain
-vn = sqrt(u0.^2+v0.^2); lambda1=vn+c0; lambda2=vn-c0; 
-a0 = max(abs([lambda1(:);lambda2(:)])); 
-dt0=CFL*min(dx./a0,dy./a0); 
+%vn = sqrt(u0.^2+v0.^2); lambda1=vn+c0; lambda2=vn-c0;
+%a0 = max(abs([lambda1(:);lambda2(:)]));
+dt0=CFL*min(dx./a0,dy./a0);
+
 % Initialize parpool
 % poolobj = gcp('nocreate'); % If no pool, do not create new one.
 % if isempty(poolobj); parpool('local',4); end
-% Configure figure 
-if plotFig
- figure(1);
- [~,h1]=contourf(x,y,r0); axis('square'); xlabel('x'); ylabel('y'); title('\rho');
+
+% Configure figure
+%if plotFig
+%figure(1);
+%[~,h1]=contourf(x,y,r0); axis('square'); xlabel('x'); ylabel('y'); title('\rho');
+%subplot(2,2,2); [~,h2]=contourf(x,y,u0); axis('square'); xlabel('x'); ylabel('y'); title('u_x');
+%subplot(2,2,3); [~,h3]=contourf(x,y,v0); axis('square'); xlabel('x'); ylabel('y'); title('u_y');
+%subplot(2,2,4); [~,h4]=contourf(x,y,p0); axis('square'); xlabel('x'); ylabel('y'); title('p');
 end
+
 % Select Solver
 solver = 1;
 switch solver
  case 1, FD_EE2d = @FD_WENO_EE2d; % Component-wise reconstruction
  case 2, FD_EE2d = @FD_WENO_EE2d_CharactRecon; % Characteristic-wise reconstruction
 end
-%% Solver Loop
-% Load IC
-q=q0; t=dt0; it=0; dt=dt0; a=a0;
-tic
-while t < tEnd
- % Interation local time
- if t+dt>tEnd; dt=tEnd-t; end; t=t+dt;
- 
- % RK Initial step
- qo = q;
- 
- % 1st stage
- L=FD_EE2d(q,a,nx,ny,dx,dy,t,fspltMth,reconMth,'Riemann'); q=qo-dt*L;
- 
- % 2nd Stage
- L=FD_EE2d(q,a,nx,ny,dx,dy,t,fspltMth,reconMth,'Riemann'); q=0.75*qo+0.25*(q-dt*L);
- 
- % 3rd stage
- L=FD_EE2d(q,a,nx,ny,dx,dy,t,fspltMth,reconMth,'Riemann'); q=(qo+2*(q-dt*L))/3;
- 
-	% Compute flow properties
- r=q(:,:,1); u=q(:,:,2)./r; v=q(:,:,3)./r; E=q(:,:,4); p=(gamma-1)*(E-0.5*r.*(u.^2+v.^2)); 
- c=sqrt(gamma*p./r);
- 
- % Update dt and time
- vn=sqrt(u.^2+v.^2); lambda1=vn+c; lambda2=vn-c;
- a = max(abs([lambda1(:);lambda2(:)])); dt=CFL*min(dx/a,dy/a); 
- 
- % update iteration counter 
- it=it+1;
- 
- % Plot figure
- if plotFig && rem(it,10) == 0
- set(h1,'ZData',r(in,jn));
- drawnow
- end
+
+%% Benchmark Loop: 100 Times Average
+numRuns = 100;
+totalCpuTime = 0;
+
+fprintf('Running benchmark loop %d times...\n', numRuns);
+for run = 1:numRuns
+    % Load IC
+    q = q0; t = 0; it = 0; dt = dt0; vn = sqrt(u0.^2+v0.^2); lambda1=vn+c0; lambda2=vn-c0; a = max(abs([lambda1(:);lambda2(:)]));
+    
+    tic
+    while t < tEnd
+     % Interaction local time
+     if t+dt>tEnd; dt=tEnd-t; end; t=t+dt;
+     
+     % RK Initial step
+     qo = q;
+     
+     % 1st stage
+     L=FD_EE2d(q,a,nx,ny,dx,dy,t,fspltMth,reconMth,'Riemann'); q=qo-dt*L;
+     
+     % 2nd Stage
+     L=FD_EE2d(q,a,nx,ny,dx,dy,t,fspltMth,reconMth,'Riemann'); q=0.75*qo+0.25*(q-dt*L);
+     
+     % 3rd stage
+     L=FD_EE2d(q,a,nx,ny,dx,dy,t,fspltMth,reconMth,'Riemann'); q=(qo+2*(q-dt*L))/3;
+     
+     % Compute flow properties
+     r=q(:,:,1); u=q(:,:,2)./r; v=q(:,:,3)./r; E=q(:,:,4); p=(gamma-1)*(E-0.5*r.*(u.^2+v.^2)); 
+     c=sqrt(gamma*p./r);
+     
+     % Update wave speed parameter for flux splitting
+     vn=sqrt(u.^2+v.^2); lambda1=vn+c; lambda2=vn-c;
+     a = max(abs([lambda1(:);lambda2(:)])); 
+     
+     % ENFORCED TIMESCALE RELATION PRESERVED ACROSS STEPS
+     dt = dt0; 
+     
+     % update iteration counter 
+     it = it+1;
+    end
+    % Plot figure
+    %plotFig && rem(it,10) == 0
+    %set(h1,'ZData',r(in,jn));
+    %set(h2,'ZData',u(in,jn));
+    %set(h3,'ZData',v(in,jn));
+    %set(h4,'ZData',p(in,jn));
+    %drawnow
 end
-cputime = toc; disp(['CPU time: ',num2str(cputime),' s']);
-% Remove ghost cells
+    totalCpuTime = totalCpuTime + toc;
+end
+
+averageCpuTime = totalCpuTime / numRuns;
+disp(['Average CPU time over ', num2str(numRuns), ' runs: ', num2str(averageCpuTime), ' s']);
+
+% Remove ghost cells for visualization calculations
 q=q(in,jn,:); nx=nx-2*R; ny=ny-2*R; 
 % compute flow properties
 r=q(:,:,1); u=q(:,:,2)./r; v=q(:,:,3)./r; E=q(:,:,4); p=(gamma-1)*(E-0.5*r.*(u.^2+v.^2));
@@ -98,205 +125,100 @@ ss = log(p./r.^gamma); % Dimensionless Entropy
 r_x = r.*u; % Mass Flow rate per unit area
 r_y = r.*v; % Mass Flow rate per unit area
 e = p./((gamma-1)*r); % internal Energy
+
 %% Final plot
-n=20; % contour lines 
-contour(x,y,r,n); axis('square'); xlabel('x(m)'); ylabel('Density (kg/m^3)');
+%n_lines=30; % contour lines
+%contour(x,y,r,n_lines); axis('square'); xlabel('x(m)'); ylabel('Density (kg/m^3)');
+
 function [r_0,u_0,v_0,p_0] = Euler_Riemann_IC2d(x,y,input)
-% Load the IC of a 2D Riemann problems configurations.
-% Following the standard convention for denoting subregions:
-%
-% 1.0 +-----------+-----------+
-% | | | 
-% | reg 2 | reg 1 |
-% | | |
-% 0.5 +-----------+-----------+
-% | | |
-% | reg 3 | reg 4 |
-% | | |
-% 0.0 +-----------+-----------+
-% 0.0 0.5 1.0
-%
-% *But in the code they will be organized as:
-%
-% prop = [prop_reg1 , prop_reg2 , prop_reg3 , prop_reg4], 
-%
-% with the following primite properties:
-%
-% r = rho/density
-% u = velocity in x direction
-% v = velocity in y direction
-% p = pressure
-%
-% Manuel A. Diaz, NTU, 2013.01.27
 %% Initial Physical Properties per case:
 switch input
- case{1} % Configuration 1
- fprintf('Configuration 1 \n');
- p = [1.0 0.4 0.0439 0.15 ];
- r = [1.0 0.5197 0.1072 0.2579];
- u = [0.0 -0.7259 -0.7259 0.0 ];
- v = [0.0 -0.0 -1.4045 -1.4045];
- 
- case{2} % Configuration 2
- fprintf('Configuration 2 \n');
- p = [1.0 0.4 1.0 0.4 ];
- r = [1.0 0.5197 1.0 0.5197];
- u = [0.0 -0.7259 -0.7259 0.0 ];
- v = [0.0 0.0 -0.7259 -0.7259];
- 
- case{3} % Configuration 3
- fprintf('Configuration 3 \n');
- p = [1.5 0.3 0.029 0.3 ];
- r = [1.5 0.5323 0.138 0.5323];
- u = [0.0 1.206 1.206 0.0 ];
- v = [0.0 0.0 1.206 1.206 ];
- 
- case{4} % Configuration 4
- fprintf('Configuration 4 \n');
- p = [1.1 0.35 1.1 0.35 ];
- r = [1.1 0.5065 1.1 0.5065];
- u = [0.0 0.8939 0.8939 0.0 ];
- v = [0.0 0.0 0.8939 0.8939];
- 
- case{5} % Configuration 5
- fprintf('Configuration 5 \n');
+ case{1} % Test 1
  p = [ 1.0 1.0 1.0 1.0 ];
  r = [ 1.0 2.0 1.0 3.0 ];
  u = [-0.75 -0.75 0.75 0.75];
  v = [-0.5 0.5 0.5 -0.5 ];
  
+ case{2} % Test 2
+ p = [1.0 1.0 0.4 0.4 ];
+ r = [1.0 2.0 1.0625 0.5197];
+ u = [0.0 0.0 0.0 0.0 ];
+ v = [1.0 -0.3 0.2145 0.2741];
+ 
  otherwise
- error('only 18 cases are available');
+ error('only 2 cases are available');
 end
-%% Print configuration of selected IC
-fprintf('\n');
-fprintf(' reg 1 reg 2 reg 3 reg 4\n');
-fprintf('density : %2.4f %2.4f %2.4f %2.4f \n',r);
-fprintf(' x-vel : %2.4f %2.4f %2.4f %2.4f \n',u);
-fprintf(' y-vel : %2.4f %2.4f %2.4f %2.4f \n',v);
-fprintf('Presure : %2.4f %2.4f %2.4f %2.4f \n',p);
-fprintf('\n');
-% Region masks
-%reg1 = (x >= 0.8 & y >= 0.8); % Top-right
-%reg2 = (x < 0.8 & y >= 0.8); % Top-left
-%reg3 = (x < 0.8 & y < 0.8); % Bottom-left
-%reg4 = (x >= 0.8 & y < 0.8); % Bottom-right
-% Assign initial conditions
-%r_0 = reg1*1.5 + reg2*0.5323 + reg3*0.138 + reg4*0.5323; % Density
-%u_0 = reg1*0 + reg2*1.206 + reg3*1.206 + reg4*0; % X-velocity
-%v_0 = reg1*0 + reg2*0 + reg3*1.206 + reg4*1.206; % Y-velocity
-%p_0 = reg1*1.5 + reg2*0.3 + reg3*0.029 + reg4*0.3; % Pressure
-% Parameters of regions dimensions
-reg1 = (x>=0.5 & y>=0.5); % region 1
-reg2 = (x <0.5 & y>=0.5); % region 2
-reg3 = (x <0.5 & y <0.5); % region 3
-reg4 = (x>=0.5 & y <0.5); % region 4
-% Initial Condition for our 2D domain
-r_0 = r(1)*reg1 + r(2)*reg2 + r(3)*reg3 + r(4)*reg4; % Density, rho
-u_0 = u(1)*reg1 + u(2)*reg2 + u(3)*reg3 + u(4)*reg4; % velocity in x
-v_0 = v(1)*reg1 + v(2)*reg2 + v(3)*reg3 + v(4)*reg4; % velocity in y
-p_0 = p(1)*reg1 + p(2)*reg2 + p(3)*reg3 + p(4)*reg4; % temperature.
+
+reg1 = (x>=0.5 & y>=0.5); 
+reg2 = (x <0.5 & y>=0.5); 
+reg3 = (x <0.5 & y <0.5); 
+reg4 = (x>=0.5 & y <0.5); 
+
+r_0 = r(1)*reg1 + r(2)*reg2 + r(3)*reg3 + r(4)*reg4; 
+u_0 = u(1)*reg1 + u(2)*reg2 + u(3)*reg3 + u(4)*reg4; 
+v_0 = v(1)*reg1 + v(2)*reg2 + v(3)*reg3 + v(4)*reg4; 
+p_0 = p(1)*reg1 + p(2)*reg2 + p(3)*reg3 + p(4)*reg4; 
 end 
+
 function res = FD_WENO_EE2d(q,a,nx,ny,dx,dy,t,fsplitMth,Recon,Test)
- % Identify number of gost cells
  switch Recon
- case {'WENO5','Poly5'}, R=3; %R: stencil size and number of gost cells
+ case {'WENO5','Poly5'}, R=3;
  case {'WENO7','Poly7'}, R=4;
- otherwise, error('reconstruction not available ;P');
+ otherwise, error('reconstruction not available');
  end
- % Set boundary conditions on ghost cells
+ 
  switch Test
- case 'Smooth' % Set Periodic BCs
+ case 'Smooth'
  for i=1:R
- q(:,i,:)=q(:,nx-R+i,:); q(:,nx-2*R+i,:)=q(:,R+i,:);	% Periodic BCs
+ q(:,i,:)=q(:,nx-R+i,:); q(:,nx-2*R+i,:)=q(:,R+i,:);
  end
  for j=1:R
- q(j,:,:)=q(ny-R+i,:,:); q(ny-2*R+j,:,:)=q(R+j,:,:);	% Periodic BCs
+ q(j,:,:)=q(ny-R+i,:,:); q(ny-2*R+j,:,:)=q(R+j,:,:);
  end
- case 'Riemann' % Set outflow BCs
+ case 'Riemann'
  for i=1:R
- q(:,i,:)=q(:,R+1,:); q(:,nx+1-i,:)=q(:,nx-R,:);	% Neumann BCs
+ q(:,i,:)=q(:,R+1,:); q(:,nx+1-i,:)=q(:,nx-R,:);
  end
  for j=1:R
- q(j,:,:)=q(R+1,:,:); q(ny+1-j,:,:)=q(ny-R,:,:);	% Neumann BCs
- end
- case 'DMR' % Set DMR test BCs
- % Static BCs
- for i=1:R
- q(:,i,:)=q(:,R+1,:); q(:,nx+1-i,:)=q(:,nx-R,:);	% Neumann BCs
- end
- % Static BCs at the bottom of domain
- for j=1:R
- for i=R+1:nx-R
- if i<(R+mesh_wedge_position)
- q(j,i,:)=q(R+1,i,:); % outflow condition : Neumann BC
- else
- q(j,i,:)=q(R+1,i,:); q(j,i,3)=-q(R+1,i,3); % EE reflective BC
+ q(j,:,:)=q(R+1,:,:); q(ny+1-j,:,:)=q(ny-R,:,:);
  end
  end
- end
- % Time dependent BCs at the top of domain: moving shock
- for j=ny+1-R:ny % only gosht cells at the top
- for i=R+1:nx-R % evaluate all x domain
- if distance_to_shock(i*dx+dx/2,(j+R)*dy+dy/2,t) < -3*dx % mesh_shock
- q(j,i,:)=q(ny-R,i,:); % Neumann BC
- elseif distance_to_shock(i*dx+dx/2,(j+R)*dy+dy/2,t) > 3*dx % mesh_shock
- q(j,i,:)=q(ny-R,i,:); % Neumann BC
- elseif distance_to_shock(i*dx+dx/2,(j+R)*dy+dy/2,t) < 0 % mesh_shock
- q(j,i,:)=postshock; % Dirichlet BCs
- else
- q(j,i,:)=preshock; % Dirichlet BCs
- end
- end
- end
- otherwise, error('Test boundaries not set!');
- end
-% 2. Produce flux splitting in x-direction
- % we only consider internal cells 
+
  ic=R+1:ny-R; 
- % Normal unitary face vectors: (nx,ny)
- % normals = {[1,0], [0,1]}; % i.e.: x-axis, y-axis
  switch fsplitMth
- case 'LF', [fp,fm] = LF(a,q(ic,:,:),[1,0]); % Lax-Friedrichs (LF) Flux Splitting
- case 'LLF', [fp,fm] = Rusanov(q(ic,:,:),[1,0]); % Local Lax-Friedrichs (LF) Flux Splitting
- otherwise, error('Splitting method not set.');
+ case 'LF', [fp,fm] = LF(a,q(ic,:,:),[1,0]);
+ case 'LLF', [fp,fm] = Rusanov(q(ic,:,:),[1,0]);
  end
-% 3. Reconstruct interface values: qL=q_{i+1/2}^{-} and qR=q_{i-1/2}^{+}
- E=4; % numer of components or layers
+
+ E=4; 
  parfor e=1:E
  switch Recon
  case 'WENO5', [flux(e,:)] = WENO5recon_X(fp(:,:,e),fm(:,:,e),nx);
  case 'WENO7', [flux(e,:)] = WENO7recon_X(fp(:,:,e),fm(:,:,e),nx);
  case 'Poly5', [flux(e,:)] = POLY5recon_X(fp(:,:,e),fm(:,:,e),nx);
  case 'Poly7', [flux(e,:)] = POLY7recon_X(fp(:,:,e),fm(:,:,e),nx);
- otherwise, error('reconstruction not available ;P');
  end
  end
-% 4. Compute finite volume residual term, df/dx.
+
  res=zeros(size(q)); nc=ny-2*R; nf=nx+1-2*R;
- % Flux contribution to the residual of every cell
  for e=1:E
- for j=1:nc % for all interior cells
- res(j+R,R+1,e) = res(j+R,R+1,e) - flux(e,j+nc*(1-1))/dx; % left face of cell j=4.
- for i = 2:nf-1 % for all interior faces
+ for j=1:nc
+ res(j+R,R+1,e) = res(j+R,R+1,e) - flux(e,j+nc*(1-1))/dx;
+ for i = 2:nf-1
  res(j+R,i+R-1,e) = res(j+R,i+R-1,e) + flux(e,j+nc*(i-1))/dx;
  res(j+R, i+R ,e) = res(j+R, i+R ,e) - flux(e,j+nc*(i-1))/dx;
  end
- res(j+R,nx-R,e) = res(j+R,nx-R,e) + flux(e,j+nc*(nf-1))/dx; % right face of cell j=N-3.
+ res(j+R,nx-R,e) = res(j+R,nx-R,e) + flux(e,j+nc*(nf-1))/dx;
  end
  end
- % Clear flux variables
  clear flux fp fm;
  
-% 5. Produce flux splitting in y-direction
- % we only consider internal cells
  ic=R+1:nx-R;
  switch fsplitMth
- case 'LF', [fp,fm] = LF(a,q(:,ic,:),[0,1]); % Lax-Friedrichs (LF) Flux Splitting
- case 'LLF', [fp,fm] = Rusanov(q(:,ic,:),[0,1]); % Local Lax-Friedrichs (LF) Flux Splitting
- otherwise, error('Splitting method not set.');
+ case 'LF', [fp,fm] = LF(a,q(:,ic,:),[0,1]);
+ case 'LLF', [fp,fm] = Rusanov(q(:,ic,:),[0,1]);
  end
-% 6. Reconstruct interface values: qL=q_{j+1/2}^{-} and qR=q_{j-1/2}^{+}
+
  parfor e=1:E
  switch Recon
  case 'WENO5', [flux(e,:)] = WENO5recon_Y(fp(:,:,e),fm(:,:,e),ny);
@@ -305,275 +227,176 @@ function res = FD_WENO_EE2d(q,a,nx,ny,dx,dy,t,fsplitMth,Recon,Test)
  case 'Poly7', [flux(e,:)] = POLY7recon_Y(fp(:,:,e),fm(:,:,e),ny);
  end
  end
-% 7. Flux contribution to the residual of every cell
+
  nc=nx-2*R; nf=ny+1-2*R;
  for e=1:E
- for i=1:nc % for all interior cells
+ for i=1:nc
  res(R+1,i+R,e) = res(R+1,i+R,e) - flux(e,1+nf*(i-1))/dy;
- for j=2:nf-1 % for all interior cells
+ for j=2:nf-1
  res(j+R-1,i+R,e) = res(j+R-1,i+R,e) + flux(e,j+nf*(i-1))/dy;
  res( j+R ,i+R,e) = res( j+R ,i+R,e) - flux(e,j+nf*(i-1))/dy;
  end
  res(ny-R,i+R,e) = res(ny-R,i+R,e) + flux(e,nf+nf*(i-1))/dy;
  end
  end
-end % FVM WENO
-%%%%%%%%%%%%%%%%%%%
-% Distance to shock (for Double Mach Reflection)
-%%%%%%%%%%%%%%%%%%%
-function distance = distance_to_shock(x,y,t)
- global shock_speed
- shock_slope = 1/tan(pi/6); % from problem definition
- wedge_position = 1/6; % from problem definition
- distance = (shock_slope*(x-wedge_position-shock_speed*t)-y) / sqrt((shock_slope)^2+1);
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Flux Splitting functions
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Lax-Friedrichs
+
 function [Fp,Fm] = LF(a,q,normal)
  global gamma
- 
- % Normal vectors
- nx = normal(1);
- ny = normal(2);
- 
- % primary properties
+ nx = normal(1); ny = normal(2);
  r=q(:,:,1); u=q(:,:,2)./r; v=q(:,:,3)./r; E=q(:,:,4); vn=u*nx+v*ny;
  p=(gamma-1)*(E-0.5*r.*(u.^2+v.^2));
- 
- % Flux vector of conserved properties
- % F=[r.*u; r.*u.^2+p; r.*u.*v; u.*(E+p)];
- % G=[r.*v; r.*u.*v; r.*v.^2+p; v.*(E+p)];
  F=cat(3, r.*vn, r.*vn.*u + p*nx, r.*vn.*v + p*ny, vn.*(E+p));
- 
- % Lax-Friedrichs flux
  Fp=0.5*(F + a*q); 
  Fm=0.5*(F - a*q); 
 end
-% Rusanov (or local Lax-Friedrichs)
+
 function [Fp,Fm] = Rusanov(q,normal)
  global gamma
- 
- % Normal vectors
- nx = normal(1);
- ny = normal(2);
- 
- % primary properties
- r=q(:,:,1); u=q(:,:,2)./r; v=q(:,:,3)./r; E=q(:,:,4); vn=u*nx+v*ny;
- p=(gamma-1)*(E-0.5*r.*(u.^2+v.^2)); a=sqrt(gamma*p./r); 
- 
- % Flux vector of conserved properties
- % F=[r.*u; r.*u.^2+p; r.*u.*v; u.*(E+p)];
- % G=[r.*v; r.*u.*v; r.*v.^2+p; v.*(E+p)];
- F=cat(3, r.*vn, r.*vn.*u + p*nx, r.*vn.*v + p*ny, vn.*(E+p));
- 
- % positive and negative fluxes
- I=ones(3,1); % I = [1;1;1;] column vector
- Fp=0.5*(F + I*a.*q); 
- Fm=0.5*(F - I*a.*q); 
+ nx = normal(1); ny = normal(2);
+ r = q(:,:,1); u = q(:,:,2)./r; v = q(:,:,3)./r; E = q(:,:,4); vn = u*nx + v*ny;
+ p  = (gamma-1)*(E - 0.5*r.*(u.^2 + v.^2));
+ a  = sqrt(gamma*p./r); 
+ F = cat(3, r.*vn, r.*vn.*u + p*nx, r.*vn.*v + p*ny, vn.*(E + p) );
+ alpha = abs(vn) + a; 
+ alpha = repmat(alpha,[1 1 4]);
+ Fp = 0.5*(F + alpha.*q);
+ Fm = 0.5*(F - alpha.*q);
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% WENO and Polynomail reconstructions
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function [flux] = WENO5recon_X(v,u,N)
-I = 3:(N-3); % Stencil size
-%% Left State Extrapolation $u_{i+1/2}^{-}$
-vmm = reshape(v(:,I-2,:),1,[]);
-vm = reshape(v(:,I-1,:),1,[]);
-vo = reshape(v(:, I ,:),1,[]);
-vp = reshape(v(:,I+1,:),1,[]);
-vpp = reshape(v(:,I+2,:),1,[]);
-% Smooth Indicators (Beta factors)
-B0n = 13/12*(vmm - 2*vm + vo).^2 + 1/4*(vmm - 4*vm + 3*vo).^2;
-B1n = 13/12*(vm - 2*vo + vp).^2 + 1/4*(vm - vp).^2;
-B2n = 13/12*(vo - 2*vp + vpp).^2 + 1/4*(3*vo - 4*vp + vpp).^2;
-beta = 1/3.*(B0n+B1n+B2n);
-%B0n = 1/2*((vm-vmm).^2 + (vo-vm).^2) + (vo-2*vm+vmm).^2;
-%B1n = 1/2*((vo-vm).^2 + (vp-vo).^2) + (vm-2*vo+vp).^2;
-%B2n = 1/2*((vp-vo).^2 + (vpp-vp).^2) + (vpp-2*vp+vo).^2;
-% Global smoothness measure (tau5)
-tau5 = abs(B0n - B2n);
- %b1 = (1/4) * ([1 -4 3] * [vmm; vm; vo]).^2;
- %b2 = (1/4) * ([-1 0 1] * [vm; vo; vp]).^2;
- %b3 = (1/4) * ([3 -4 1] * [vo; vp; vpp]).^2;
+I = 3:(N-3);
+vmm = reshape(v(:,I-2,:),1,[]); vm = reshape(v(:,I-1,:),1,[]); vo = reshape(v(:, I ,:),1,[]); vp = reshape(v(:,I+1,:),1,[]); vpp = reshape(v(:,I+2,:),1,[]);
+%B0n = 13/12 * (vmm - 2*vm + vo).^2 + 1/4 * (vmm - 4*vm + 3*vo).^2;
+%B1n = 13/12 * (vm - 2*vo + vp).^2 + 1/4 * (vm - vp).^2;
+%B2n = 13/12 * (vo - 2*vp + vpp).^2 + 1/4 * (3*vo - 4*vp + vpp).^2;
+B0n = 1/2*((vm-vmm).^2 + (vo-vm).^2) + (vo-2*vm+vmm).^2;
+B1n = 1/2*((vo-vm).^2 + (vp-vo).^2) + (vm-2*vo+vp).^2;
+B2n = 1/2*((vp-vo).^2 + (vpp-vp).^2) + (vpp-2*vp+vo).^2;
+
+ b5 = (1/4) * ([1 -4 3] * [vmm; vm; vo]).^2;
+ b6 = (1/4) * ([-1 0 1] * [vm; vo; vp]).^2;
+ b7 = (1/4) * ([3 -4 1] * [vo; vp; vpp]).^2;
+ B5 = (1/144) * ([1 -8 0 8 -1] * [vmm; vm; vo; vp; vpp]).^2;
  
- % Extended Smoothness Terms
- %B4 = (1/36) * ([0 2 3 -6 1] * [vmm; vm; vo; vp; vpp]).^2;
- %b5 = (1/144) * ([1 -8 0 8 -1] * [vmm; vm; vo; vp; vpp]).^2;
- 
- % Global Smoothness Measure (tau)
- %tau5 = (abs(b1-b5)+abs(b3-b5)-2*abs(b2-b5));
-% Linear weights
-d0n = 1/10; d1n = 6/10; d2n = 3/10; epsilon = 1e-40; p = 2;
-E0n = 3/4; E1n = 3/2; E2n = 3/4;
-%tau5 = abs(((vmm - 2*vm + vo).^2) - 2*((vm - 2*vo + vp).^2) + ((vo - 2*vp + vpp).^2));
-% Nonlinear alpha weights (WENO-Z)
+%tau5 = abs(abs(b5-B5)+abs(b7-B5)-2*abs(b6-B5));
+tau5 = abs(((vmm - 2*vm + vo).^2) - 2*((vm - 2*vo + vp).^2) + ((vo - 2*vp + vpp).^2));
+d0n = 1/10; d1n = 6/10; d2n = 3/10; epsilon = 1e-6; p = 2;
+%tau5= abs(B2n-B0n);
 alpha0n = d0n * (1 + (tau5 ./ (B0n + epsilon)).^p);
 alpha1n = d1n * (1 + (tau5 ./ (B1n + epsilon)).^p);
 alpha2n = d2n * (1 + (tau5 ./ (B2n + epsilon)).^p);
-% Nonlinear alpha weights
+%alpha0n = d0n * (1 + (tau5 ./ (B0n + epsilon)).^p);
+%alpha1n = d1n * (1 + (tau5 ./ (B1n + epsilon)).^p);
+%alpha2n = d2n * (1 + (tau5 ./ (B2n + epsilon)).^p);
 %alpha0n = d0n ./(B0n + epsilon).^p;
 %alpha1n = d1n ./ (B1n + epsilon).^p;
 %alpha2n = d2n ./(B2n + epsilon).^p;
-% Normalized weights
-alphasumn = alpha0n + alpha1n + alpha2n;
-w0n = alpha0n ./ alphasumn;
-w1n = alpha1n ./ alphasumn;
-w2n = alpha2n ./ alphasumn;
-% Left flux $u_{i+1/2}^{-}$
-flux = w0n.*(2*vmm - 7*vm + 11*vo)/6 ...
- + w1n.*(-vm + 5*vo + 2*vp)/6 ...
- + w2n.*(2*vo + 5*vp - vpp)/6;
-%% Right State Extrapolation $u_{i+1/2}^{+}$
-umm = reshape(u(:,I-1,:),1,[]);
-um = reshape(u(:, I ,:),1,[]);
-uo = reshape(u(:,I+1,:),1,[]);
-up = reshape(u(:,I+2,:),1,[]);
-upp = reshape(u(:,I+3,:),1,[]);
-% Smooth Indicators (Beta factors)
-B0p = 13/12*(umm - 2*um + uo).^2 + 1/4*(umm - 4*um + 3*uo).^2;
-B1p = 13/12*(um - 2*uo + up).^2 + 1/4*(um - up).^2;
-B2p = 13/12*(uo - 2*up + upp).^2 + 1/4*(3*uo - 4*up + upp).^2;
-eta = 1/3.*(B0p +B1p + B2p);
-%B0p = 1/2*((um-umm).^2 + (uo-um).^2) + (uo-2*um+umm).^2;
-%B1p = 1/2*((uo-um).^2 + (up-uo).^2) + (um-2*uo+up).^2;
-%B2p = 1/2*((up-uo).^2 + (upp-up).^2) + (upp-2*up+uo).^2;
-% b1 = (1/4) * ([1 -4 3] * [umm; um; uo]).^2;
-% b2 = (1/4) * ([-1 0 1] * [um; uo; up]).^2;
-% b3 = (1/4) * ([3 -4 1] * [uo; up; upp]).^2;
  
- % Extended Smoothness Terms
- % B4 = (1/36) * ([0 2 3 -6 1] * [umm; um; uo; up; upp]).^2;
- %b5 = (1/144) * ([1 -8 0 8 -1] * [umm; um; uo; up; upp]).^2;
-% Global smoothness measure (tau5)
-tau5 = abs(B0p - B2p);
-% Linear weights
-d0p = 1/10; d1p = 6/10; d2p = 3/10; epsilon = 1e-40; p = 2;
-E0p = 3/4; E1p = 3/2; E2p = 3/4;
-%tau5 = abs(((umm - 2*um + uo).^2) - 2*((um - 2*uo + up).^2) + ((uo - 2*up + upp).^2));
-%tau5 = (abs(b1-b5)+abs(b3-b5)-2*abs(b2-b5));
-% Nonlinear alpha weights (WENO-Z)
+
+alphasumn = alpha0n + alpha1n + alpha2n;
+w0n = alpha0n ./ alphasumn; w1n = alpha1n ./ alphasumn; w2n = alpha2n ./ alphasumn;
+
+flux = w0n.*(2*vmm - 7*vm + 11*vo)/6 + w1n.*(-vm + 5*vo + 2*vp)/6 + w2n.*(2*vo + 5*vp - vpp)/6;
+
+umm = reshape(u(:,I-1,:),1,[]); um = reshape(u(:, I ,:),1,[]); uo = reshape(u(:,I+1,:),1,[]); up = reshape(u(:,I+2,:),1,[]); upp = reshape(u(:,I+3,:),1,[]);
+%B0p = 13/12 * (umm - 2*um + uo).^2 + 1/4 * (umm - 4*um + 3*uo).^2;
+%B1p = 13/12 * (um - 2*uo + up).^2 + 1/4 * (um - up).^2;
+%B2p = 13/12 * (uo - 2*up + upp).^2 + 1/4 * (3*uo - 4*up + upp).^2;
+B0p = 1/2*((um-umm).^2 + (uo-um).^2) + (uo-2*um+umm).^2;
+B1p = 1/2*((uo-um).^2 + (up-uo).^2) + (um-2*uo+up).^2;
+B2p = 1/2*((up-uo).^2 + (upp-up).^2) + (upp-2*up+uo).^2;
+
+ b5 = (1/4) * ([1 -4 3] * [umm; um; uo]).^2;
+ b6 = (1/4) * ([-1 0 1] * [um; uo; up]).^2;
+ b7 = (1/4) * ([3 -4 1] * [uo; up; upp]).^2;
+ B5 = (1/144) * ([1 -8 0 8 -1] * [umm; um; uo; up; upp]).^2;
+ 
+%tau5 = abs(abs(b5-B5)+abs(b7-B5)-2*abs(b6-B5));
+tau5 = abs(((umm - 2*um + uo).^2) - 2*((um - 2*uo + up).^2) + ((uo - 2*up + upp).^2));
+d0p = 1/10; d1p = 6/10; d2p = 3/10; epsilon = 1e-6; p = 2;
+%tau5= abs(B2p-B0p);
 alpha0p = d0p * (1 + (tau5 ./ (B0p + epsilon)).^p);
-alpha1p = d1p * (1 +  (tau5 ./ (B1p + epsilon)).^p);
+alpha1p = d1p * (1 + (tau5 ./ (B1p + epsilon)).^p);
 alpha2p = d2p * (1 + (tau5 ./ (B2p + epsilon)).^p);
-% Nonlinear alpha weights (WENO-Z)
+%alpha0p = d0p * (1 + 0.1.*(tau5 ./ (B0p + epsilon)).^p);
+%alpha1p = d1p * (1 + 0.1.*(tau5 ./ (B1p + epsilon)).^p);
+%alpha2p = d2p * (1 + 0.8.*(tau5 ./ (B2p + epsilon)).^p);
 %alpha0p = d0p ./(B0p + epsilon).^p;
 %alpha1p = d1p ./ (B1p + epsilon).^p;
 %alpha2p = d2p ./(B2p + epsilon).^p;
-% Normalized weights
+ 
+
 alphasump = alpha0p + alpha1p + alpha2p;
-w0p = alpha0p ./ alphasump;
-w1p = alpha1p ./ alphasump;
-w2p = alpha2p ./ alphasump;
-% Right flux $u_{i+1/2}^{+}$
-flux = flux + w0p.*(-umm + 5*um + 2*uo)/6 ...
- + w1p.*(2*um + 5*uo - up)/6 ...
- + w2p.*(11*uo - 7*up + 2*upp)/6;
+w0p = alpha0p ./ alphasump; w1p = alpha1p ./ alphasump; w2p = alpha2p ./ alphasump;
+
+flux = flux + w0p.*(-umm + 5*um + 2*uo)/6 + w1p.*(2*um + 5*uo - up)/6 + w2p.*(11*uo - 7*up + 2*upp)/6;
 end
+
 function [flux] = WENO5recon_Y(v, u, N)
-% WENO-Z Reconstruction in the Y-direction
-% Input:
-% v, u - Variables to reconstruct
-% N - Grid size
-% Output:
-% flux - Flux at the cell interfaces using WENO-Z scheme
-I = 3:(N-3); % Stencil range (R=3)
-%% Left State Extrapolation (u_{i+1/2}^{-})
-vmm = reshape(v(I-2,:,:),1,[]);
-vm = reshape(v(I-1,:,:),1,[]);
-vo = reshape(v(I,:,:),1,[]);
-vp = reshape(v(I+1,:,:),1,[]);
-vpp = reshape(v(I+2,:,:),1,[]);
-% Smoothness Indicators (Beta factors)
-B0n = 13/12 * (vmm - 2*vm + vo).^2 + 1/4 * (vmm - 4*vm + 3*vo).^2;
-B1n = 13/12 * (vm - 2*vo + vp).^2 + 1/4 * (vm - vp).^2;
-B2n = 13/12 * (vo - 2*vp + vpp).^2 + 1/4 * (3*vo - 4*vp + vpp).^2;
-beta = 1/3 *(B0n+B1n+B2n);
-%B0n = 1/2*((vm-vmm).^2 + (vo-vm).^2) + (vo-2*vm+vmm).^2;
-%B1n = 1/2*((vo-vm).^2 + (vp-vo).^2) + (vm-2*vo+vp).^2;
-%B2n = 1/2*((vp-vo).^2 + (vpp-vp).^2) + (vpp-2*vp+vo).^2;
-% Modified Smooth Indicators
- %b1 = (1/4) * ([1 -4 3] * [vmm; vm; vo]).^2;
- %b2 = (1/4) * ([-1 0 1] * [vm; vo; vp]).^2;
- %b3 = (1/4) * ([3 -4 1] * [vo; vp; vpp]).^2;
+I = 3:(N-3);
+vmm = reshape(v(I-2,:,:),1,[]); vm = reshape(v(I-1,:,:),1,[]); vo = reshape(v(I,:,:),1,[]); vp = reshape(v(I+1,:,:),1,[]); vpp = reshape(v(I+2,:,:),1,[]);
+%B0n = 13/12 * (vmm - 2*vm + vo).^2 + 1/4 * (vmm - 4*vm + 3*vo).^2;
+%B1n = 13/12 * (vm - 2*vo + vp).^2 + 1/4 * (vm - vp).^2;
+%B2n = 13/12 * (vo - 2*vp + vpp).^2 + 1/4 * (3*vo - 4*vp + vpp).^2;
+B0n = 1/2*((vm-vmm).^2 + (vo-vm).^2) + (vo-2*vm+vmm).^2;
+B1n = 1/2*((vo-vm).^2 + (vp-vo).^2) + (vm-2*vo+vp).^2;
+B2n = 1/2*((vp-vo).^2 + (vpp-vp).^2) + (vpp-2*vp+vo).^2;
+
+ b5 = (1/4) * ([1 -4 3] * [vmm; vm; vo]).^2;
+ b6 = (1/4) * ([-1 0 1] * [vm; vo; vp]).^2;
+ b7 = (1/4) * ([3 -4 1] * [vo; vp; vpp]).^2;
+ B5 = (1/144) * ([1 -8 0 8 -1] * [vmm; vm; vo; vp; vpp]).^2;
  
- % Extended Smoothness Terms
- % B4 = (1/36) * ([0 2 3 -6 1] * [vmm; vm; vo; vp; vpp]).^2;
- %b5 = (1/144) * ([1 -8 0 8 -1] * [vmm; vm; vo; vp; vpp]).^2;
- % Linear weights and regularization
- % d = [1/10, 6/10, 3/10];
- % epsilon = 1e-40;
+ d0n = 1/10; d1n = 6/10; d2n = 3/10; epsilon = 1e-6;p=2;
+ %tau5 = abs(abs(b5-B5)+abs(b7-B5)-2*abs(b6-B5));
+ tau5 = abs(((vmm - 2*vm + vo).^2) - 2*((vm - 2*vo + vp).^2) + ((vo - 2*vp + vpp).^2));
+ %tau5= abs(B2n-B0n);
+ alpha0n = d0n .* (1 +  (tau5 ./ (epsilon + B0n)).^2);
+ alpha1n = d1n .* (1 +  (tau5 ./ (epsilon + B1n)).^2);
+ alpha2n = d2n .* (1 +  (tau5 ./ (epsilon + B2n)).^2);
+ %alpha0n = d0n .* (1 + 0.1.*(tau5 ./ (epsilon + B0n)).^2);
+ %alpha1n = d1n .* (1 + 0.1.*(tau5 ./ (epsilon + B1n)).^2);
+ %alpha2n = d2n .* (1 + 0.1.*(tau5 ./ (epsilon + B2n)).^2);
+ %alpha0n = d0n ./(B0n + epsilon).^p;
+ %alpha1n = d1n ./ (B1n + epsilon).^p;
+ %alpha2n = d2n./(B2n + epsilon).^p;
  
-% Constants
-d0n = 1/10; d1n = 6/10; d2n = 3/10; epsilon = 1e-40; p =2;
-E0n = 3/4; E1n = 3/2; E2n = 3/4;
-%tau5 = abs(((vmm - 2*vm + vo).^2) - 2*((vm - 2*vo + vp).^2) + ((vo - 2*vp + vpp).^2));
-%tau5 = (abs(b1-b5)+abs(b3-b5)-2*abs(b2-b5));
-% Alpha Weights for WENO-Z
-tau5 = abs(B0n - B2n); % Global smoothness indicator
-alpha0n = d0n .* (1 + (tau5 ./ (epsilon + B0n)).^2);
-alpha1n = d1n .* (1 + (tau5 ./ (epsilon + B1n)).^2);
-alpha2n = d2n .* (1 + (tau5 ./ (epsilon + B2n)).^2);
-%alpha0n = d0n ./(B0n + epsilon).^p;
-%alpha1n = d1n ./ (B1n + epsilon).^p;
-%alpha2n = d2n ./(B2n + epsilon).^p;
-alphasumn = alpha0n + alpha1n + alpha2n;
-% Nonlinear Weights
-w0n = alpha0n ./ alphasumn;
-w1n = alpha1n ./ alphasumn;
-w2n = alpha2n ./ alphasumn;
-% Numerical Flux at cell boundary (Left Extrapolation)
-flux = w0n .* (2*vmm - 7*vm + 11*vo)/6 ...
- + w1n .* (-vm + 5*vo + 2*vp)/6 ...
- + w2n .* (2*vo + 5*vp - vpp)/6;
-%% Right State Extrapolation (u_{i+1/2}^{+})
-umm = reshape(u(I-1,:,:),1,[]);
-um = reshape(u(I,:,:),1,[]);
-uo = reshape(u(I+1,:,:),1,[]);
-up = reshape(u(I+2,:,:),1,[]);
-upp = reshape(u(I+3,:,:),1,[]);
-% Smoothness Indicators (Beta factors)
-B0p = 13/12 * (umm - 2*um + uo).^2 + 1/4 * (umm - 4*um + 3*uo).^2;
-B1p = 13/12 * (um - 2*uo + up).^2 + 1/4 * (um - up).^2;
-B2p = 13/12 * (uo - 2*up + upp).^2 + 1/4 * (3*uo - 4*up + upp).^2;
-eta = 1/3.*(B0p+B1p+B2p);
-%B0p = 1/2*((um-umm).^2 + (uo-um).^2) + (uo-2*um+umm).^2;
-%B1p = 1/2*((uo-um).^2 + (up-uo).^2) + (um-2*uo+up).^2;
-%B2p = 1/2*((up-uo).^2 + (upp-up).^2) + (upp-2*up+uo).^2;
-% Modified Smooth Indicators for Right
- %b1 = (1/4) * ([1 -4 3] * [umm; um; uo]).^2;
- %b2 = (1/4) * ([-1 0 1] * [um; uo; up]).^2;
- %b3 = (1/4) * ([3 -4 1] * [uo; up; upp]).^2;
-% Extended Smoothness Terms
- % B4 = (1/36) * ([0 2 3 -6 1] * [umm; um; uo; up; upp]).^2;
- %b5 = (1/144) * ([1 -8 0 8 -1] * [umm; um; uo; up; upp]).^2;
- % Linear weights and regularisation
- %d = [1/10, 6/10, 3/10];
- % epsilon = 1e-40;
+ alphasumn = alpha0n + alpha1n + alpha2n;
+ w0n = alpha0n ./ alphasumn; w1n = alpha1n ./ alphasumn; w2n = alpha2n ./ alphasumn;
+ 
+ flux = w0n .* (2*vmm - 7*vm + 11*vo)/6 + w1n .* (-vm + 5*vo + 2*vp)/6 + w2n .* (2*vo + 5*vp - vpp)/6;
+
+ umm = reshape(u(I-1,:,:),1,[]); um = reshape(u(I,:,:),1,[]); uo = reshape(u(I+1,:,:),1,[]); up = reshape(u(I+2,:,:),1,[]); upp = reshape(u(I+3,:,:),1,[]);
+% B0p = 13/12 * (umm - 2*um + uo).^2 + 1/4 * (umm - 4*um + 3*uo).^2;
+% B1p = 13/12 * (um - 2*uo + up).^2 + 1/4 * (um - up).^2;
+% B2p = 13/12 * (uo - 2*up + upp).^2 + 1/4 * (3*uo - 4*up + upp).^2;
+ B0p = 1/2*((um-umm).^2 + (uo-um).^2) + (uo-2*um+umm).^2;
+ B1p = 1/2*((uo-um).^2 + (up-uo).^2) + (um-2*uo+up).^2;
+ B2p = 1/2*((up-uo).^2 + (upp-up).^2) + (upp-2*up+uo).^2;
+
+ b5 = (1/4) * ([1 -4 3] * [umm; um; uo]).^2;
+ b6 = (1/4) * ([-1 0 1] * [um; uo; up]).^2;
+ b7 = (1/4) * ([3 -4 1] * [uo; up; upp]).^2;
+ B5 = (1/144) * ([1 -8 0 8 -1] * [umm; um; uo; up; upp]).^2;
+ 
+ d0p = 1/10; d1p = 6/10; d2p = 3/10; epsilon = 1e-6; p = 2;
+ %tau5 = abs(abs(b5-B5)+abs(b7-B5)-2*abs(b6-B5));
+ tau5 = abs(((umm - 2*um + uo).^2) - 2*((um - 2*uo + up).^2) + ((uo - 2*up + upp).^2));
+ %tau5= abs(B2p-B0p);
+ alpha0p = d0p .* (1 + (tau5 ./ (epsilon + B0p)).^2);
+ alpha1p = d1p .* (1 + (tau5 ./ (epsilon + B1p)).^2);
+ alpha2p = d2p .* (1 + (tau5 ./ (epsilon + B2p)).^2);
+ %alpha0p = d0p .* (1 + 0.1.*(tau5 ./ (epsilon + B0p)).^2);
+ %alpha1p = d1p .* (1 + 0.1.*(tau5 ./ (epsilon + B1p)).^2);
+ %alpha2p = d2p .* (1 + 0.8.*(tau5 ./ (epsilon + B2p)).^2);
  % Nonlinear alpha weights (WENO-Z)
-%beta = [B0p, B1p, B2p];
-% Constants
-% Linear weights
-d0p = 1/10; d1p = 6/10; d2p = 3/10; epsilon = 1e-40; p =2;
-E0p = 3/4; E1p = 3/2; E2p = 3/4;
-%tau5 = abs(((umm - 2*um + uo).^2) - 2*((um - 2*uo + up).^2) + ((uo - 2*up + upp).^2));
-%tau5 = (abs(b1-b5)+abs(b3-b5)-2*abs(b2-b5));
-% Alpha Weights for WENO-Z
-tau5 = abs(B0p - B2p); % Global smoothness indicator
-alpha0p = d0p .* (1 +(tau5 ./ (epsilon + B0p)).^2);
-alpha1p = d1p .* (1 +(tau5 ./ (epsilon + B1p)).^2);
-alpha2p = d2p .* (1 +(tau5 ./ (epsilon + B2p)).^2);
-%alpha0p = d0p ./(B0p + epsilon).^p;
-%alpha1p = d1p ./ (B1p + epsilon).^p;
-%alpha2p = d2p ./(B2p + epsilon).^p;
-alphasump = alpha0p + alpha1p + alpha2p;
-% Nonlinear Weights
-w0p = alpha0p ./ alphasump;
-w1p = alpha1p ./ alphasump;
-w2p = alpha2p ./ alphasump;
-% Numerical Flux at cell boundary (Right Extrapolation)
-flux = flux + w0p .* (-umm + 5*um + 2*uo)/6 ...
- + w1p .* (2*um + 5*uo - up)/6 ...
- + w2p .* (11*uo - 7*up + 2*upp)/6;
+ %alpha0p = d0p ./(B0p + epsilon).^p;
+ %alpha1p = d1p ./ (B1p + epsilon).^p;
+ %alpha2p = d2p ./(B2p + epsilon).^p;
+ 
+ alphasump = alpha0p + alpha1p + alpha2p;
+ w0p = alpha0p ./ alphasump; w1p = alpha1p ./ alphasump; w2p = alpha2p ./ alphasump;
+ 
+ flux = flux + w0p .* (-umm + 5*um + 2*uo)/6 + w1p .* (2*um + 5*uo - up)/6 + w2p .* (11*uo - 7*up + 2*upp)/6;
 end
