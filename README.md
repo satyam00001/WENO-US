@@ -1,1 +1,1 @@
-The code includes implementations of the 1D and 2D shallow water equations, as well as the 2D and 3D compressible Euler equations. It supports the WENO-LOC, WENO-JS, WENO-Z, WENO-UD, and WENO-US schemes for solving these benchmark problems under the corresponding initial and boundary conditions.
+The code includes implementations of the 2D-shallow water equations, as well as the 2D compressible Euler equations. It supports the WENO-LOC, WENO-JS, WENO-Z, WENO-UD, and WENO-US schemes for solving these benchmark problems under the corresponding initial and boundary conditions.
