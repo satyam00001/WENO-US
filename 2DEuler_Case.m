@@ -1,15 +1,15 @@
 clear; %close all; clc;
 global gamma 
 %% Parameters
-CFL = 0.45; %CFL number
-tEnd = 0.3; %Final time
-nx = 201; %Number of cells/Elements in x
-ny = 201; %Number of cells/Elements in y
-n = 5; % Degrees of freedom: ideal air=5, monoatomic gas=3.
+CFL = 0.45; 
+tEnd = 0.3; 
+nx = 201; 
+ny = 201; 
+n = 5; 
 IC = 1; % 2 IC cases are available
 fspltMth='LF'; %LF, LLF.
-reconMth='WENO5'; %WENO5, WENO7, Poly5, Poly7;
-plotFig = false; %Visualize evolution of domain
+reconMth='WENO5'; 
+plotFig = false; 
 % Ratio of specific heats for ideal di-atomic gas
 gamma=(n+2)/n;
 % Discretize spatial domain
@@ -18,9 +18,9 @@ Ly=1; dy=Ly/(ny-1); yc=0:dy:Ly;
 [x,y] = meshgrid(xc,yc);
 % Set IC
 [r0,u0,v0,p0] = Euler_Riemann_IC2d(x,y,IC);
-E0 = p0./(gamma-1)+0.5*r0.*(u0.^2+v0.^2); % Total Energy
-c0 = sqrt(gamma*p0./r0); % Speed of sound
-Q0 = cat(3, r0, r0.*u0, r0.*v0, E0); % initial state
+E0 = p0./(gamma-1)+0.5*r0.*(u0.^2+v0.^2); 
+c0 = sqrt(gamma*p0./r0); 
+Q0 = cat(3, r0, r0.*u0, r0.*v0, E0); 
 % Set q-array & adjust grid for ghost cells
 switch reconMth
  case {'WENO5','Poly5'}, R=3; nx=nx+2*R; ny=ny+2*R; in=R+1:ny-R; jn=R+1:nx-R;
@@ -29,25 +29,25 @@ end
 q0=zeros(ny,nx,4); q0(in,jn,:)=Q0;
 
 % ENFORCED TIMESCALE RELATION: t = CFL * dx
-dt0 = CFL * dx; 
+%dt0 = CFL * dx; 
 
 % Discretize time domain
-%vn = sqrt(u0.^2+v0.^2); lambda1=vn+c0; lambda2=vn-c0;
-%a0 = max(abs([lambda1(:);lambda2(:)]));
-%dt0=CFL*min(dx./a0,dy./a0);
+vn = sqrt(u0.^2+v0.^2); lambda1=vn+c0; lambda2=vn-c0;
+a0 = max(abs([lambda1(:);lambda2(:)]));
+dt0=CFL*min(dx./a0,dy./a0);
 
 % Initialize parpool
 % poolobj = gcp('nocreate'); % If no pool, do not create new one.
 % if isempty(poolobj); parpool('local',4); end
 
 % Configure figure
-%if plotFig
-%figure(1);
-%[~,h1]=contourf(x,y,r0); axis('square'); xlabel('x'); ylabel('y'); title('\rho');
+if plotFig
+figure(1);
+[~,h1]=contourf(x,y,r0); axis('square'); xlabel('x'); ylabel('y'); title('\rho');
 %subplot(2,2,2); [~,h2]=contourf(x,y,u0); axis('square'); xlabel('x'); ylabel('y'); title('u_x');
 %subplot(2,2,3); [~,h3]=contourf(x,y,v0); axis('square'); xlabel('x'); ylabel('y'); title('u_y');
 %subplot(2,2,4); [~,h4]=contourf(x,y,p0); axis('square'); xlabel('x'); ylabel('y'); title('p');
-%end
+end
 
 % Select Solver
 solver = 1;
@@ -97,13 +97,13 @@ for run = 1:numRuns
      it = it+1;
     end
     % Plot figure
-    %plotFig && rem(it,10) == 0
-    %set(h1,'ZData',r(in,jn));
+    plotFig && rem(it,10) == 0
+    set(h1,'ZData',r(in,jn));
     %set(h2,'ZData',u(in,jn));
     %set(h3,'ZData',v(in,jn));
     %set(h4,'ZData',p(in,jn));
-    %drawnow
-    %end
+    drawnow
+    end
     totalCpuTime = totalCpuTime + toc;
 end
 
